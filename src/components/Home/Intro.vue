@@ -7,8 +7,8 @@
             </h1>
 
             <div class="std">
-                <p class="-green">Vasily Makarov</p>
-                <p class="-white">
+                <p class="-purple">Vasily Makarov</p>
+                <p class="-gray">
                     Unity developer,<br>
                     backend developer.
                 </p>

@@ -13,15 +13,15 @@ const router = new Router({
     routes: [
         {
             path: '/',
-            name: '.is()',
+            name: 'Vasili Makarov',
             component: Home,
             meta: {
-                title: 'iuri.is',
+                title: 'agentdalecoper',
                 bodyClass: 'page-home',
                 metaTags: [
                     {
                         name: 'description',
-                        content: 'I am a frontend creative developer, designer and illustrator and this is my portfolio'
+                        content: 'Unity developer, network and backend developer'
                     },
                     // facebook
                     {
