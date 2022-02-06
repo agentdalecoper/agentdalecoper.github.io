@@ -60,7 +60,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/css/admin.53400b90.css.gz"
   },
   {
-    "revision": "acc3f0bf8f6abd357f00",
+    "revision": "d151fdc9fc6318550d35",
     "url": "/css/app.de5c8a24.css"
   },
   {
@@ -194,6 +194,14 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
     "revision": "e34bd674d4ddbe6cb9b4b8c992c434de",
     "url": "/img/clouds-3.e34bd674.png"
+  },
+  {
+    "revision": "da7e08979538f96240a533c63137a052",
+    "url": "/img/cube.da7e0897.svg"
+  },
+  {
+    "revision": "da0522a84083719d2d718dcc78eb3466",
+    "url": "/img/cube.da7e0897.svg.gz"
   },
   {
     "revision": "1bcf6ae9a78d369cbfed644e689d30a6",
@@ -384,11 +392,11 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/img/work-desbravando.1f69d95f.png"
   },
   {
-    "revision": "9c107d5b610286afd94dc30cdf876f57",
+    "revision": "38aee6dec5dac2931948212686bf208c",
     "url": "/index.html"
   },
   {
-    "revision": "aec7abacb5be33ae3898e2f7f394ddad",
+    "revision": "dea17f70ff83eabb2965fba49a4604be",
     "url": "/index.html.gz"
   },
   {
@@ -416,12 +424,12 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/js/admin.8eff579d.js.gz"
   },
   {
-    "revision": "acc3f0bf8f6abd357f00",
-    "url": "/js/app.e26e8b62.js"
+    "revision": "d151fdc9fc6318550d35",
+    "url": "/js/app.c1b0ff8e.js"
   },
   {
-    "revision": "6b194f92d5aa50705c547db3e162eee5",
-    "url": "/js/app.e26e8b62.js.gz"
+    "revision": "08b689bb3ed53a96549351491100d5bc",
+    "url": "/js/app.c1b0ff8e.js.gz"
   },
   {
     "revision": "e4fa3b5a5de85fd1429f",
