@@ -2,15 +2,15 @@
     <section class="scene-intro" id="intro">
         <div class="static-container">
             <h1 class="title">
-                <span class="iuri">iuri</span>
-                <span class="func">.is()</span>
+                <span class="iuri">agentdalecoper</span>
+                <span class="func">.github.io</span>
             </h1>
 
             <div class="std">
-                <p class="-purple">Iuri de Paula</p>
-                <p class="-gray">
-                    Creative frontend developer,<br>
-                    designer, and illustrator.
+                <p class="-green">Vasily Makarov</p>
+                <p class="-white">
+                    Unity developer,<br>
+                    backend developer.
                 </p>
             </div>
         </div>
