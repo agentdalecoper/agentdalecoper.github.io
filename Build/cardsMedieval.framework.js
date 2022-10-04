@@ -1160,26 +1160,26 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 3648032: function() {
+ 3657804: function() {
   Module["emscripten_get_now_backup"] = performance.now;
  },
- 3648087: function($0) {
+ 3657859: function($0) {
   performance.now = function() {
    return $0;
   };
  },
- 3648135: function($0) {
+ 3657907: function($0) {
   performance.now = function() {
    return $0;
   };
  },
- 3648183: function() {
+ 3657955: function() {
   performance.now = Module["emscripten_get_now_backup"];
  },
- 3648238: function() {
+ 3658010: function() {
   return Module.webglContextAttributes.premultipliedAlpha;
  },
- 3648299: function() {
+ 3658071: function() {
   return Module.webglContextAttributes.preserveDrawingBuffer;
  }
 };
@@ -15849,17 +15849,6 @@ function invoke_vififfii(index, a1, a2, a3, a4, a5, a6, a7) {
  }
 }
 
-function invoke_iiifii(index, a1, a2, a3, a4, a5) {
- var sp = stackSave();
- try {
-  return dynCall_iiifii(index, a1, a2, a3, a4, a5);
- } catch (e) {
-  stackRestore(sp);
-  if (e !== e + 0 && e !== "longjmp") throw e;
-  _setThrew(1, 0);
- }
-}
-
 function invoke_iiififii(index, a1, a2, a3, a4, a5, a6, a7) {
  var sp = stackSave();
  try {
@@ -15886,6 +15875,17 @@ function invoke_iiiifi(index, a1, a2, a3, a4, a5) {
  var sp = stackSave();
  try {
   return dynCall_iiiifi(index, a1, a2, a3, a4, a5);
+ } catch (e) {
+  stackRestore(sp);
+  if (e !== e + 0 && e !== "longjmp") throw e;
+  _setThrew(1, 0);
+ }
+}
+
+function invoke_iiifii(index, a1, a2, a3, a4, a5) {
+ var sp = stackSave();
+ try {
+  return dynCall_iiifii(index, a1, a2, a3, a4, a5);
  } catch (e) {
   stackRestore(sp);
   if (e !== e + 0 && e !== "longjmp") throw e;
