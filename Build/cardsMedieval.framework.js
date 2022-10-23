@@ -1160,26 +1160,26 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 4121032: function() {
+ 4132284: function() {
   Module["emscripten_get_now_backup"] = performance.now;
  },
- 4121087: function($0) {
+ 4132339: function($0) {
   performance.now = function() {
    return $0;
   };
  },
- 4121135: function($0) {
+ 4132387: function($0) {
   performance.now = function() {
    return $0;
   };
  },
- 4121183: function() {
+ 4132435: function() {
   performance.now = Module["emscripten_get_now_backup"];
  },
- 4121238: function() {
+ 4132490: function() {
   return Module.webglContextAttributes.premultipliedAlpha;
  },
- 4121299: function() {
+ 4132551: function() {
   return Module.webglContextAttributes.preserveDrawingBuffer;
  }
 };
@@ -2666,6 +2666,11 @@ function _JS_SystemInfo_GetScreenSize(outWidth, outHeight) {
  HEAPF64[outHeight >> 3] = Module.SystemInfo.height;
 }
 
+function _JS_SystemInfo_GetStreamingAssetsURL(buffer, bufferSize) {
+ if (buffer) stringToUTF8(Module.streamingAssetsUrl, buffer, bufferSize);
+ return lengthBytesUTF8(Module.streamingAssetsUrl);
+}
+
 function _JS_SystemInfo_HasAstcHdr() {
  var ext = GLctx.getExtension("WEBGL_compressed_texture_astc");
  if (ext && ext.getSupportedProfiles) {
@@ -2692,6 +2697,252 @@ function _JS_SystemInfo_IsMobile() {
 
 function _JS_UnityEngineShouldQuit() {
  return !!Module.shouldQuit;
+}
+
+var videoInstances = {};
+
+var jsSupportedVideoFormats = [];
+
+var jsUnsupportedVideoFormats = [];
+
+function _JS_Video_CanPlayFormat(format) {
+ format = UTF8ToString(format);
+ if (jsSupportedVideoFormats.indexOf(format) != -1) return true;
+ if (jsUnsupportedVideoFormats.indexOf(format) != -1) return false;
+ var video = document.createElement("video");
+ var canPlay = video.canPlayType(format);
+ if (canPlay) jsSupportedVideoFormats.push(format); else jsUnsupportedVideoFormats.push(format);
+ return !!canPlay;
+}
+
+var videoInstanceIdCounter = 0;
+
+function jsVideoEnded() {
+ if (this.onendedCallback) {
+  dynCall_vi(this.onendedCallback, this.onendedRef);
+ }
+}
+
+var hasSRGBATextures = null;
+
+function _JS_Video_Create(url) {
+ var str = UTF8ToString(url);
+ var video = document.createElement("video");
+ video.style.display = "none";
+ video.src = str;
+ video.muted = true;
+ video.setAttribute("muted", "");
+ video.setAttribute("playsinline", "");
+ video.crossOrigin = "anonymous";
+ videoInstances[++videoInstanceIdCounter] = video;
+ if (hasSRGBATextures == null) hasSRGBATextures = Module.SystemInfo.browser == "Chrome" || Module.SystemInfo.browser == "Edge";
+ return videoInstanceIdCounter;
+}
+
+var jsVideoPendingBlockedVideos = {};
+
+function jsVideoPlayPendingBlockedVideo(video) {
+ jsVideoPendingBlockedVideos[video].play().then(function() {
+  jsVideoRemovePendingBlockedVideo(video);
+ });
+}
+
+function jsVideoAttemptToPlayBlockedVideos() {
+ for (var i in jsVideoPendingBlockedVideos) {
+  if (jsVideoPendingBlockedVideos.hasOwnProperty(i)) jsVideoPlayPendingBlockedVideo(i);
+ }
+}
+
+function jsVideoRemovePendingBlockedVideo(video) {
+ delete jsVideoPendingBlockedVideos[video];
+ if (Object.keys(jsVideoPendingBlockedVideos).length == 0) {
+  window.removeEventListener("mousedown", jsVideoAttemptToPlayBlockedVideos);
+ }
+}
+
+function _JS_Video_Destroy(video) {
+ var v = videoInstances[video];
+ if (v.loopEndPollInterval) {
+  clearInterval(v.loopEndPollInterval);
+ }
+ jsVideoRemovePendingBlockedVideo(video);
+ v.src = "";
+ delete v.onendedCallback;
+ v.onended = v.onerror = v.oncanplay = v.onseeked = null;
+ delete videoInstances[video];
+}
+
+function _JS_Video_Duration(video) {
+ return videoInstances[video].duration;
+}
+
+function _JS_Video_EnableAudioTrack(video, trackIndex, enabled) {
+ var v = videoInstances[video];
+ if (!v.enabledTracks) v.enabledTracks = [];
+ while (v.enabledTracks.length <= trackIndex) v.enabledTracks.push(true);
+ v.enabledTracks[trackIndex] = enabled;
+ var tracks = v.audioTracks;
+ if (!tracks) return;
+ var track = tracks[trackIndex];
+ if (track) track.enabled = enabled ? true : false;
+}
+
+function _JS_Video_GetAudioLanguageCode(video, trackIndex) {
+ var tracks = videoInstances[video].audioTracks;
+ if (!tracks) return "";
+ var track = tracks[trackIndex];
+ return track ? track.language : "";
+}
+
+function _JS_Video_GetNumAudioTracks(video) {
+ var tracks = videoInstances[video].audioTracks;
+ return tracks ? tracks.length : 1;
+}
+
+function _JS_Video_Height(video) {
+ return videoInstances[video].videoHeight;
+}
+
+function _JS_Video_IsPlaying(video) {
+ var v = videoInstances[video];
+ return !v.paused && !v.ended;
+}
+
+function _JS_Video_IsReady(video) {
+ var v = videoInstances[video];
+ var targetReadyState = /(iPhone|iPad)/i.test(navigator.userAgent) ? v.HAVE_METADATA : v.HAVE_ENOUGH_DATA;
+ if (!v.isReady && v.readyState >= targetReadyState) v.isReady = true;
+ return v.isReady;
+}
+
+function _JS_Video_Pause(video) {
+ var v = videoInstances[video];
+ v.pause();
+ jsVideoRemovePendingBlockedVideo(video);
+ if (v.loopEndPollInterval) {
+  clearInterval(v.loopEndPollInterval);
+ }
+}
+
+function _JS_Video_SetLoop(video, loop) {
+ var v = videoInstances[video];
+ if (v.loopEndPollInterval) {
+  clearInterval(v.loopEndPollInterval);
+ }
+ v.loop = loop;
+ if (loop) {
+  v.loopEndPollInterval = setInterval(function() {
+   if (v.currentTime < v.lastSeenPlaybackTime) {
+    jsVideoEnded.apply(v);
+   }
+   v.lastSeenPlaybackTime = v.currentTime;
+  }, 1e3 / 30);
+  v.lastSeenPlaybackTime = v.currentTime;
+  v.onended = null;
+ } else {
+  v.onended = jsVideoEnded;
+ }
+}
+
+function jsVideoAllAudioTracksAreDisabled(v) {
+ if (!v.enabledTracks) return false;
+ for (var i = 0; i < v.enabledTracks.length; ++i) {
+  if (v.enabledTracks[i]) return false;
+ }
+ return true;
+}
+
+function jsVideoAddPendingBlockedVideo(video, v) {
+ if (Object.keys(jsVideoPendingBlockedVideos).length == 0) window.addEventListener("mousedown", jsVideoAttemptToPlayBlockedVideos);
+ jsVideoPendingBlockedVideos[video] = v;
+}
+
+function _JS_Video_Play(video, muted) {
+ var v = videoInstances[video];
+ v.muted = muted || jsVideoAllAudioTracksAreDisabled(v);
+ var promise = v.play();
+ if (promise) promise.catch(function(e) {
+  if (e.name == "NotAllowedError") jsVideoAddPendingBlockedVideo(video, v);
+ });
+ _JS_Video_SetLoop(video, v.loop);
+}
+
+function _JS_Video_Seek(video, time) {
+ var v = videoInstances[video];
+ v.lastSeenPlaybackTime = v.currentTime = time;
+}
+
+function _JS_Video_SetEndedHandler(video, ref, onended) {
+ var v = videoInstances[video];
+ v.onendedCallback = onended;
+ v.onendedRef = ref;
+}
+
+function _JS_Video_SetErrorHandler(video, ref, onerror) {
+ videoInstances[video].onerror = function(evt) {
+  dynCall_vii(onerror, ref, evt.target.error.code);
+ };
+}
+
+function _JS_Video_SetMute(video, muted) {
+ var v = videoInstances[video];
+ v.muted = muted || jsVideoAllAudioTracksAreDisabled(v);
+}
+
+function _JS_Video_SetPlaybackRate(video, rate) {
+ videoInstances[video].playbackRate = rate;
+}
+
+function _JS_Video_SetReadyHandler(video, ref, onready) {
+ videoInstances[video].oncanplay = function() {
+  dynCall_vi(onready, ref);
+ };
+}
+
+function _JS_Video_SetSeekedOnceHandler(video, ref, onseeked) {
+ videoInstances[video].onseeked = function() {
+  dynCall_vi(onseeked, ref);
+ };
+}
+
+function _JS_Video_SetVolume(video, volume) {
+ videoInstances[video].volume = volume;
+}
+
+function _JS_Video_Time(video) {
+ return videoInstances[video].currentTime;
+}
+
+function _JS_Video_UpdateToTexture(video, tex, adjustToLinearspace) {
+ var v = videoInstances[video];
+ if (!(v.videoWidth > 0 && v.videoHeight > 0)) return false;
+ if (v.lastUpdateTextureTime === v.currentTime) return false;
+ v.lastUpdateTextureTime = v.currentTime;
+ GLctx.pixelStorei(GLctx.UNPACK_FLIP_Y_WEBGL, true);
+ var internalFormat = adjustToLinearspace ? hasSRGBATextures ? GLctx.SRGB8_ALPHA8 : GLctx.SRGB8 : GLctx.RGBA;
+ var format = adjustToLinearspace ? hasSRGBATextures ? GLctx.RGBA : GLctx.RGB : GLctx.RGBA;
+ if (v.previousUploadedWidth != v.videoWidth || v.previousUploadedHeight != v.videoHeight) {
+  GLctx.deleteTexture(GL.textures[tex]);
+  var t = GLctx.createTexture();
+  t.name = tex;
+  GL.textures[tex] = t;
+  GLctx.bindTexture(GLctx.TEXTURE_2D, t);
+  GLctx.texParameteri(GLctx.TEXTURE_2D, GLctx.TEXTURE_WRAP_S, GLctx.CLAMP_TO_EDGE);
+  GLctx.texParameteri(GLctx.TEXTURE_2D, GLctx.TEXTURE_WRAP_T, GLctx.CLAMP_TO_EDGE);
+  GLctx.texParameteri(GLctx.TEXTURE_2D, GLctx.TEXTURE_MIN_FILTER, GLctx.LINEAR);
+  GLctx.texImage2D(GLctx.TEXTURE_2D, 0, internalFormat, format, GLctx.UNSIGNED_BYTE, v);
+  v.previousUploadedWidth = v.videoWidth;
+  v.previousUploadedHeight = v.videoHeight;
+ } else {
+  GLctx.bindTexture(GLctx.TEXTURE_2D, GL.textures[tex]);
+  GLctx.texImage2D(GLctx.TEXTURE_2D, 0, internalFormat, format, GLctx.UNSIGNED_BYTE, v);
+ }
+ GLctx.pixelStorei(GLctx.UNPACK_FLIP_Y_WEBGL, false);
+ return true;
+}
+
+function _JS_Video_Width(video) {
+ return videoInstances[video].videoWidth;
 }
 
 var ExceptionInfoAttrs = {
@@ -13529,12 +13780,37 @@ var asmLibraryArg = {
  "JS_SystemInfo_GetOS": _JS_SystemInfo_GetOS,
  "JS_SystemInfo_GetPreferredDevicePixelRatio": _JS_SystemInfo_GetPreferredDevicePixelRatio,
  "JS_SystemInfo_GetScreenSize": _JS_SystemInfo_GetScreenSize,
+ "JS_SystemInfo_GetStreamingAssetsURL": _JS_SystemInfo_GetStreamingAssetsURL,
  "JS_SystemInfo_HasAstcHdr": _JS_SystemInfo_HasAstcHdr,
  "JS_SystemInfo_HasCursorLock": _JS_SystemInfo_HasCursorLock,
  "JS_SystemInfo_HasFullscreen": _JS_SystemInfo_HasFullscreen,
  "JS_SystemInfo_HasWebGL": _JS_SystemInfo_HasWebGL,
  "JS_SystemInfo_IsMobile": _JS_SystemInfo_IsMobile,
  "JS_UnityEngineShouldQuit": _JS_UnityEngineShouldQuit,
+ "JS_Video_CanPlayFormat": _JS_Video_CanPlayFormat,
+ "JS_Video_Create": _JS_Video_Create,
+ "JS_Video_Destroy": _JS_Video_Destroy,
+ "JS_Video_Duration": _JS_Video_Duration,
+ "JS_Video_EnableAudioTrack": _JS_Video_EnableAudioTrack,
+ "JS_Video_GetAudioLanguageCode": _JS_Video_GetAudioLanguageCode,
+ "JS_Video_GetNumAudioTracks": _JS_Video_GetNumAudioTracks,
+ "JS_Video_Height": _JS_Video_Height,
+ "JS_Video_IsPlaying": _JS_Video_IsPlaying,
+ "JS_Video_IsReady": _JS_Video_IsReady,
+ "JS_Video_Pause": _JS_Video_Pause,
+ "JS_Video_Play": _JS_Video_Play,
+ "JS_Video_Seek": _JS_Video_Seek,
+ "JS_Video_SetEndedHandler": _JS_Video_SetEndedHandler,
+ "JS_Video_SetErrorHandler": _JS_Video_SetErrorHandler,
+ "JS_Video_SetLoop": _JS_Video_SetLoop,
+ "JS_Video_SetMute": _JS_Video_SetMute,
+ "JS_Video_SetPlaybackRate": _JS_Video_SetPlaybackRate,
+ "JS_Video_SetReadyHandler": _JS_Video_SetReadyHandler,
+ "JS_Video_SetSeekedOnceHandler": _JS_Video_SetSeekedOnceHandler,
+ "JS_Video_SetVolume": _JS_Video_SetVolume,
+ "JS_Video_Time": _JS_Video_Time,
+ "JS_Video_UpdateToTexture": _JS_Video_UpdateToTexture,
+ "JS_Video_Width": _JS_Video_Width,
  "__cxa_allocate_exception": ___cxa_allocate_exception,
  "__cxa_atexit": ___cxa_atexit,
  "__cxa_begin_catch": ___cxa_begin_catch,
@@ -14274,6 +14550,10 @@ var dynCall_fiiiif = Module["dynCall_fiiiif"] = createExportWrapper("dynCall_fii
 
 var dynCall_viffffffffffffiiii = Module["dynCall_viffffffffffffiiii"] = createExportWrapper("dynCall_viffffffffffffiiii");
 
+var dynCall_vidii = Module["dynCall_vidii"] = createExportWrapper("dynCall_vidii");
+
+var dynCall_vijii = Module["dynCall_vijii"] = createExportWrapper("dynCall_vijii");
+
 var dynCall_iiiiiff = Module["dynCall_iiiiiff"] = createExportWrapper("dynCall_iiiiiff");
 
 var dynCall_jiiii = Module["dynCall_jiiii"] = createExportWrapper("dynCall_jiiii");
@@ -14404,8 +14684,6 @@ var dynCall_iijjiiiiii = Module["dynCall_iijjiiiiii"] = createExportWrapper("dyn
 
 var dynCall_iiiijjii = Module["dynCall_iiiijjii"] = createExportWrapper("dynCall_iiiijjii");
 
-var dynCall_vijii = Module["dynCall_vijii"] = createExportWrapper("dynCall_vijii");
-
 var dynCall_jijj = Module["dynCall_jijj"] = createExportWrapper("dynCall_jijj");
 
 var dynCall_iiiiiiiiiji = Module["dynCall_iiiiiiiiiji"] = createExportWrapper("dynCall_iiiiiiiiiji");
@@ -14519,6 +14797,8 @@ var dynCall_iiiffiii = Module["dynCall_iiiffiii"] = createExportWrapper("dynCall
 var dynCall_iiiiifii = Module["dynCall_iiiiifii"] = createExportWrapper("dynCall_iiiiifii");
 
 var dynCall_iiffifii = Module["dynCall_iiffifii"] = createExportWrapper("dynCall_iiffifii");
+
+var dynCall_viidi = Module["dynCall_viidi"] = createExportWrapper("dynCall_viidi");
 
 var dynCall_iiiiiffi = Module["dynCall_iiiiiffi"] = createExportWrapper("dynCall_iiiiiffi");
 
@@ -14689,8 +14969,6 @@ var dynCall_diiji = Module["dynCall_diiji"] = createExportWrapper("dynCall_diiji
 var dynCall_vjiiiiiiii = Module["dynCall_vjiiiiiiii"] = createExportWrapper("dynCall_vjiiiiiiii");
 
 var dynCall_ijiiii = Module["dynCall_ijiiii"] = createExportWrapper("dynCall_ijiiii");
-
-var dynCall_viidi = Module["dynCall_viidi"] = createExportWrapper("dynCall_viidi");
 
 var dynCall_jidi = Module["dynCall_jidi"] = createExportWrapper("dynCall_jidi");
 
@@ -14875,8 +15153,6 @@ var dynCall_ddii = Module["dynCall_ddii"] = createExportWrapper("dynCall_ddii");
 var dynCall_viddddddi = Module["dynCall_viddddddi"] = createExportWrapper("dynCall_viddddddi");
 
 var dynCall_viddddddddi = Module["dynCall_viddddddddi"] = createExportWrapper("dynCall_viddddddddi");
-
-var dynCall_vidii = Module["dynCall_vidii"] = createExportWrapper("dynCall_vidii");
 
 var dynCall_vidddddddddi = Module["dynCall_vidddddddddi"] = createExportWrapper("dynCall_vidddddddddi");
 
